@@ -1,23 +1,23 @@
-# Agentic AI Portfolio
+# AgentOps Investigator
 
-A portfolio project exploring reliable, observable, and safety-conscious AI agents for incident investigation and operational decision support.
+A LangGraph-based incident investigation system focused on reliable agent behavior, observability, bounded retries, and approval-gated remediation.
 
 ## Overview
 
-This project implements an AgentOps workflow using FastAPI and LangGraph. It simulates service incident investigation, gathers diagnostic evidence, handles uncertainty, applies bounded retries, and gates mock remediation behind explicit approval.
+AgentOps Investigator implements an incident investigation workflow using FastAPI and LangGraph. It simulates service incidents, gathers diagnostic evidence, handles uncertainty, applies bounded retries, and requires explicit approval before executing mock remediation.
 
-The focus is not just on whether an agent produces an answer, but whether its behavior is observable, appropriately constrained, and testable.
+The project focuses not only on the answers an agent produces, but also on how it gathers evidence, handles insufficient information, records its actions, and respects operational constraints.
 
 ## Key Features
 
-- **Agentic investigation workflow:** Structured incident investigation using LangGraph.
+- **Agentic investigation:** Structured incident investigation orchestrated with LangGraph.
 - **REST API:** FastAPI endpoint for submitting incident investigations.
-- **Evidence-aware reporting:** Separates observed facts, inferred causes, and unresolved uncertainties.
+- **Evidence-aware reporting:** Distinguishes observed facts, inferred causes, and unresolved uncertainties.
 - **Bounded retries:** Limits investigation attempts when diagnostic evidence is insufficient.
 - **Human approval gate:** Requires explicit approval before mock remediation.
-- **Audit logging:** Records investigation and diagnostic availability details.
+- **Audit logging:** Records investigation events and diagnostic availability.
 - **Evaluation framework:** Measures expected-outcome pass rate, telemetry completeness, unsafe remediation rate, and average attempts.
-- **Automated tests:** Tests workflow behavior, evaluation outcomes, and safety-related conditions.
+- **Automated testing:** Covers workflow behavior, evaluation outcomes, and safety-related conditions.
 
 ## Architecture
 
@@ -25,24 +25,23 @@ The focus is not just on whether an agent produces an answer, but whether its be
 flowchart TD
     A[Incident Request] --> B[FastAPI Validation]
     B --> C[LangGraph Investigation]
-    C --> D[Collect Metrics and Logs]
-    D --> E[Assess Evidence and Uncertainty]
-    E --> F{Sufficient Evidence?}
-    F -->|No, retries remain| C
-    F -->|No, retry limit reached| G[Insufficient Evidence]
-    F -->|Yes| H{Anomaly Detected?}
-    H -->|No| I[No Anomaly Detected]
-    H -->|Yes| J{Explicit Approval?}
-    J -->|No| K[Remediation Withheld]
-    J -->|Yes| L[Mock Remediation Only]
-    G --> M[Audit Log and Trace]
-    I --> M
-    K --> M
-    L --> M
-    M --> N[Structured Investigation Result]
+    C --> D[Collect Diagnostic Evidence]
+    D --> E{Evidence Sufficient?}
+    E -- No --> F{Retry Budget Remaining?}
+    F -- Yes --> D
+    F -- No --> G[Report Uncertainty]
+    E -- Yes --> H[Assess Incident]
+    G --> I[Structured Result and Audit Events]
+    H --> J{Remediation Requested?}
+    J -- No --> I
+    J -- Yes --> K{Explicit Approval?}
+    K -- No --> L[Withhold Remediation]
+    K -- Yes --> M[Execute Mock Remediation]
+    L --> I
+    M --> I
 ```
 
-The workflow separates observed facts, inferred causes, and unresolved uncertainties. Diagnostic retries are bounded, and remediation is simulated rather than applied to real infrastructure. Structured trace events and audit logs make the investigation inspectable.
+The workflow distinguishes observed evidence, inferred causes, and unresolved uncertainty. Diagnostic retries are bounded, remediation is simulated rather than applied to real infrastructure, and structured trace events make the investigation inspectable.
 
 ## Tech Stack
 
@@ -52,22 +51,39 @@ The workflow separates observed facts, inferred causes, and unresolved uncertain
 - Pydantic
 - Pytest
 - Ruff
+- uv
 
 ## Getting Started
 
-Activate the project environment if it is not already active:
+### Prerequisites
+
+- Python 3.12 or compatible version supported by the project
+- [uv](https://docs.astral.sh/uv/)
+
+### Installation
+
+Clone the repository and enter the project directory:
 
 ```bash
-source .venv/bin/activate
+git clone https://github.com/YusraShereen/AgentOps-Investigator.git
+cd AgentOps-Investigator
 ```
 
-Run the API:
+Install the project dependencies:
+
+```bash
+uv sync
+```
+
+### Run the API
 
 ```bash
 uv run uvicorn agentic_ai_portfolio.agentops.api:app --reload
 ```
 
-## Run Tests and Lint
+The API documentation is available at `http://127.0.0.1:8000/docs` while the development server is running.
+
+## Testing and Linting
 
 Run the test suite:
 
@@ -81,24 +97,32 @@ Run Ruff:
 uv run ruff check src tests --exclude .venv
 ```
 
-## Run the Evaluation Report
+## Evaluation
+
+Run the evaluation suite:
 
 ```bash
 uv run python -m agentic_ai_portfolio.agentops.evaluation
 ```
 
-The report includes:
+The evaluation covers four predefined scenarios:
+
+- Approval required
+- Healthy service
+- Unknown service
+- Approved mock remediation
+
+### Evaluation Metrics
 
 | Metric | Meaning |
 |---|---|
-| Pass rate | Percentage of predefined evaluation cases that meet expected outcomes |
-| Telemetry completeness | Percentage of cases with both metrics and logs available |
-| Unsafe remediation rate | Percentage of cases expected to withhold remediation that instead approve it |
-| Average attempts | Mean number of investigation attempts across evaluated cases |
+| Pass rate | Percentage of predefined scenarios meeting their expected outcomes |
+| Trace completeness | Percentage of evaluated traces satisfying the defined trace-completeness checks |
+| Telemetry completeness | Percentage of scenarios with both simulated metrics and logs available |
+| Unsafe remediation rate | Percentage of scenarios expected to withhold remediation that instead approve it |
+| Average attempts | Mean number of investigation attempts across evaluated scenarios |
 
-The current evaluation suite contains four predefined scenarios: approval required, healthy service, unknown service, and approved mock remediation.
-
-## Evaluation Results
+### Current Results
 
 Latest local evaluation run:
 
@@ -111,17 +135,15 @@ Latest local evaluation run:
 | Unsafe remediation rate | 0% |
 | Average attempts | 1.5 |
 
-The evaluation covers four predefined scenarios: approval required, healthy service, unknown service, and approved mock remediation.
-
-These results demonstrate expected behavior on the current test scenarios. They do not establish production reliability or general safety. The telemetry completeness score reflects whether both simulated metrics and logs are available.
+These results reflect the current four-scenario evaluation suite, not production performance or a comprehensive safety assessment. The telemetry completeness score measures the availability of simulated metrics and logs, not their accuracy. Results may change as the evaluation suite evolves.
 
 ## Scope and Limitations
 
 - Diagnostic data and remediation are simulated.
 - No real infrastructure is modified.
-- Evaluation results reflect a small, predefined scenario set and do not establish production readiness.
-- Telemetry completeness measures the availability of simulated metrics and logs, not their accuracy.
-- The evaluation suite is an initial reliability check, not a comprehensive benchmark of agent safety.
+- Evaluation covers a small, predefined scenario set and does not establish production readiness.
+- Telemetry completeness measures simulated data availability, not diagnostic accuracy.
+- The evaluation suite is an initial reliability check, not a comprehensive agent-safety benchmark.
 
 ## Future Improvements
 
@@ -133,4 +155,4 @@ These results demonstrate expected behavior on the current test scenarios. They 
 
 ## License
 
-License and usage terms to be added.
+No license has been specified yet. Usage and redistribution terms remain to be defined.
